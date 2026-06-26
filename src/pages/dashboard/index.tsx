@@ -1,13 +1,33 @@
+import { useEffect, useState } from 'react'
 import { Activity, Clock, ListTodo, CheckCircle2 } from 'lucide-react'
-
-const stats = [
-  { label: 'Active Tasks', value: '0', icon: ListTodo, color: 'text-blue-500' },
-  { label: 'Total Runs', value: '0', icon: Activity, color: 'text-green-500' },
-  { label: 'Success Rate', value: '—', icon: CheckCircle2, color: 'text-emerald-500' },
-  { label: 'Next Run', value: '—', icon: Clock, color: 'text-amber-500' },
-]
+import { getTasks, getLogs } from '@/services/task'
+import type { Task, LogEntry } from '@/types'
 
 function DashboardPage() {
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [logs, setLogs] = useState<LogEntry[]>([])
+
+  useEffect(() => {
+    getTasks().then(setTasks).catch(() => {})
+    getLogs().then(setLogs).catch(() => {})
+  }, [])
+
+  const totalTasks = tasks.length
+  const enabledTasks = tasks.filter((t) => t.enabled).length
+  const recentLogs = logs.length
+
+  const stats = [
+    { label: 'Total Tasks', value: String(totalTasks), icon: ListTodo, color: 'text-blue-500' },
+    { label: 'Enabled Tasks', value: String(enabledTasks), icon: CheckCircle2, color: 'text-green-500' },
+    { label: 'Recent Logs', value: String(recentLogs), icon: Activity, color: 'text-amber-500' },
+    { label: 'Next Run', value: tasks.find((t) => t.enabled && t.next_run_at)?.next_run_at
+      ? (() => {
+          const d = new Date(tasks.find((t) => t.enabled && t.next_run_at)!.next_run_at!)
+          return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+        })()
+      : '—', icon: Clock, color: 'text-emerald-500' },
+  ]
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>

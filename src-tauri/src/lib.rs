@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 
 use config::AppConfig;
 use db::Database;
-use tracing::info;
+use log::info;
 
 /// Shared application state accessible from all Tauri commands.
 pub struct AppState {
@@ -17,11 +17,6 @@ pub struct AppState {
 
 #[cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 pub fn run() {
-    // Initialise tracing (honours RUST_LOG env var).
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .init();
-
     // Load config & ensure data directory exists.
     let config = AppConfig::default();
     std::fs::create_dir_all(&config.data_dir).expect("Failed to create data directory");
@@ -60,10 +55,15 @@ pub fn run() {
         // --- commands ------------------------------------------------------
         .invoke_handler(tauri::generate_handler![
             commands::task::get_tasks,
+            commands::task::get_task,
             commands::task::create_task,
             commands::task::update_task,
             commands::task::delete_task,
             commands::task::toggle_task,
+            commands::task::get_logs,
+            commands::task::clear_logs,
+            commands::task::get_setting,
+            commands::task::set_setting,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

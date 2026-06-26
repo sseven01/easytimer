@@ -22,6 +22,8 @@ impl Database {
     pub fn init_tables(&self) -> rusqlite::Result<()> {
         self.conn.execute_batch(migrations::CREATE_TASKS_TABLE)?;
         self.conn.execute_batch(migrations::CREATE_LOGS_TABLE)?;
+        self.conn.execute_batch(migrations::CREATE_SETTINGS_TABLE)?;
+        self.conn.execute_batch(migrations::SEED_DEFAULT_SETTINGS)?;
         Ok(())
     }
 
