@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { Minus, Square, X, Timer } from 'lucide-react'
+import { invoke } from '@tauri-apps/api/core'
+import { Minus, Square, X } from 'lucide-react'
 
 function TitleBar() {
   const [isMaximized, setIsMaximized] = useState(false)
@@ -21,7 +22,8 @@ function TitleBar() {
   }
 
   async function handleClose() {
-    await appWindow.close()
+    // Hide to tray instead of closing the window
+    await invoke('hide_main_window')
   }
 
   return (
@@ -31,7 +33,9 @@ function TitleBar() {
     >
       {/* App icon + title */}
       <div className="flex items-center gap-2 px-3 pointer-events-none">
-        <Timer className="h-4 w-4 text-primary" />
+        <span className="text-sm" role="img" aria-label="timer">
+          🕐
+        </span>
         <span className="text-xs font-semibold text-foreground/80">易定时</span>
       </div>
 

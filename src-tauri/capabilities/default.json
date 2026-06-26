@@ -9,6 +9,8 @@
     "core:default",
     "shell:default",
     "notification:default",
-    "autostart:default"
+    "autostart:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister"
   ]
 }
