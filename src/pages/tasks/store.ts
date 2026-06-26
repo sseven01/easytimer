@@ -27,9 +27,9 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     set({ tasks: get().tasks.filter((t) => t.id !== id) })
   },
   toggleTask: async (id: number, enabled: boolean) => {
-    const updated = await apiToggleTask(id, enabled)
+    await apiToggleTask(id, enabled)
     set({
-      tasks: get().tasks.map((t) => (t.id === id ? updated : t)),
+      tasks: get().tasks.map((t) => (t.id === id ? { ...t, enabled } : t)),
     })
   },
 }))

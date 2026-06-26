@@ -7,18 +7,18 @@ import type { Task, ActionType, ScheduleType, ScheduleConf } from '@/types'
 const ACTION_TYPES: { value: ActionType; label: string }[] = [
   { value: 'webpage', label: 'Webpage' },
   { value: 'reminder', label: 'Reminder' },
-  { value: 'shutdown', label: 'Shutdown' },
-  { value: 'restart', label: 'Restart' },
-  { value: 'hibernate', label: 'Hibernate' },
-  { value: 'lock', label: 'Lock' },
+  { value: 'shutdown', label: '系统关机' },
+  { value: 'restart', label: '系统重启' },
+  { value: 'hibernate', label: '系统休眠' },
+  { value: 'lock', label: '锁屏' },
 ]
 
 const SCHEDULE_TYPES: { value: ScheduleType; label: string }[] = [
-  { value: 'once', label: 'Once' },
-  { value: 'interval', label: 'Interval' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
+  { value: 'once', label: '一次性' },
+  { value: 'interval', label: '间隔' },
+  { value: 'daily', label: '每日' },
+  { value: 'weekly', label: '每周' },
+  { value: 'monthly', label: '每月' },
 ]
 
 const INTERVAL_UNITS = ['seconds', 'minutes', 'hours'] as const
@@ -89,7 +89,7 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-semibold">{isEdit ? 'Edit Task' : 'New Task'}</h2>
+          <h2 className="text-lg font-semibold">{isEdit ? '编辑任务' : '新建任务'}</h2>
           <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="h-5 w-5" />
           </button>
@@ -156,7 +156,7 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
             </div>
           )}
 
-          {/* Schedule Type */}
+          {/* 定时策略 */}
           <div>
             <label className="block text-sm font-medium mb-1.5">Schedule</label>
             <div className="flex flex-wrap gap-2">
@@ -299,7 +299,7 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
 
         {/* Footer */}
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>取消</Button>
           <Button onClick={handleSave} disabled={saving || !name}>
             {saving ? 'Saving...' : 'Save'}
           </Button>

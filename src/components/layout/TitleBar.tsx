@@ -32,7 +32,7 @@ function TitleBar() {
       {/* App icon + title */}
       <div className="flex items-center gap-2 px-3 pointer-events-none">
         <Timer className="h-4 w-4 text-primary" />
-        <span className="text-xs font-semibold text-foreground/80">EasyTimer</span>
+        <span className="text-xs font-semibold text-foreground/80">易定时</span>
       </div>
 
       {/* Draggable spacer */}

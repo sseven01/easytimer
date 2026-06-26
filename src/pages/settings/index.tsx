@@ -66,7 +66,7 @@ function SettingsPage() {
 
         <div className="flex items-center justify-between p-5">
           <div>
-            <h3 className="text-sm font-medium">Auto Start</h3>
+            <h3 className="text-sm font-medium">开机自启动</h3>
             <p className="text-xs text-muted-foreground mt-0.5">Launch EasyTimer on system startup</p>
           </div>
           <ToggleSwitch
@@ -77,7 +77,7 @@ function SettingsPage() {
 
         <div className="flex items-center justify-between p-5">
           <div>
-            <h3 className="text-sm font-medium">Minimize to Tray</h3>
+            <h3 className="text-sm font-medium">最小化到托盘</h3>
             <p className="text-xs text-muted-foreground mt-0.5">Keep running in the system tray when closed</p>
           </div>
           <ToggleSwitch
@@ -88,7 +88,7 @@ function SettingsPage() {
 
         <div className="flex items-center justify-between p-5">
           <div>
-            <h3 className="text-sm font-medium">Notification Sound</h3>
+            <h3 className="text-sm font-medium">提醒声音</h3>
             <p className="text-xs text-muted-foreground mt-0.5">Play a sound when reminders trigger</p>
           </div>
           <ToggleSwitch

@@ -69,10 +69,10 @@ function TasksPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Tasks</h1>
+        <h1 className="text-2xl font-bold tracking-tight">定时任务</h1>
         <Button onClick={handleNew} className="gap-2">
           <Plus className="h-4 w-4" />
-          New Task
+          新建任务
         </Button>
       </div>
 
@@ -89,7 +89,7 @@ function TasksPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-muted-foreground">
-                <th className="px-4 py-3 font-medium w-20">Toggle</th>
+                <th className="px-4 py-3 font-medium w-20">状态</th>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Type</th>
                 <th className="px-4 py-3 font-medium">Schedule</th>

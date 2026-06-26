@@ -5,8 +5,8 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/tasks', label: 'Tasks', icon: ListTodo },
-  { path: '/logs', label: 'Logs', icon: FileText },
+  { path: '/tasks', label: '任务', icon: ListTodo },
+  { path: '/logs', label: '日志', icon: FileText },
   { path: '/settings', label: 'Settings', icon: Settings },
 ]
 

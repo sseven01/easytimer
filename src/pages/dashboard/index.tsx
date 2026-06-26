@@ -17,9 +17,9 @@ function DashboardPage() {
   const recentLogs = logs.length
 
   const stats = [
-    { label: 'Total Tasks', value: String(totalTasks), icon: ListTodo, color: 'text-blue-500' },
-    { label: 'Enabled Tasks', value: String(enabledTasks), icon: CheckCircle2, color: 'text-green-500' },
-    { label: 'Recent Logs', value: String(recentLogs), icon: Activity, color: 'text-amber-500' },
+    { label: '总任务数', value: String(totalTasks), icon: ListTodo, color: 'text-blue-500' },
+    { label: '已启用', value: String(enabledTasks), icon: CheckCircle2, color: 'text-green-500' },
+    { label: '最近日志', value: String(recentLogs), icon: Activity, color: 'text-amber-500' },
     { label: 'Next Run', value: tasks.find((t) => t.enabled && t.next_run_at)?.next_run_at
       ? (() => {
           const d = new Date(tasks.find((t) => t.enabled && t.next_run_at)!.next_run_at!)

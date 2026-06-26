@@ -21,8 +21,8 @@ export async function deleteTask(id: number): Promise<void> {
   return tauriInvoke<void>('delete_task', { id })
 }
 
-export async function toggleTask(id: number, enabled: boolean): Promise<Task> {
-  return tauriInvoke<Task>('toggle_task', { id, enabled })
+export async function toggleTask(id: number, enabled: boolean): Promise<void> {
+  return tauriInvoke<void>('toggle_task', { id, enabled })
 }
 
 export async function getLogs(): Promise<LogEntry[]> {
