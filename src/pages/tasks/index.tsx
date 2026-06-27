@@ -14,6 +14,16 @@ const TYPE_LABELS: Record<ActionType, string> = {
   restart: '重启',
   hibernate: '休眠',
   lock: '锁屏',
+  open_folder: '文件夹',
+  open_file: '文件',
+  run_command: '命令',
+  run_script: '脚本',
+  monitor_off: '关显示器',
+  empty_recycle: '清回收站',
+  logoff: '注销',
+  close_program: '关程序',
+  send_udp: 'UDP消息',
+  auto_screenshot: '截屏',
 }
 
 const TYPE_COLORS: Record<ActionType, string> = {
@@ -23,6 +33,16 @@ const TYPE_COLORS: Record<ActionType, string> = {
   restart: 'bg-green-500/20 text-green-400',
   hibernate: 'bg-purple-500/20 text-purple-400',
   lock: 'bg-gray-500/20 text-gray-400',
+  open_folder: 'bg-orange-500/20 text-orange-400',
+  open_file: 'bg-amber-500/20 text-amber-400',
+  run_command: 'bg-cyan-500/20 text-cyan-400',
+  run_script: 'bg-teal-500/20 text-teal-400',
+  monitor_off: 'bg-slate-500/20 text-slate-400',
+  empty_recycle: 'bg-lime-500/20 text-lime-400',
+  logoff: 'bg-rose-500/20 text-rose-400',
+  close_program: 'bg-pink-500/20 text-pink-400',
+  send_udp: 'bg-indigo-500/20 text-indigo-400',
+  auto_screenshot: 'bg-violet-500/20 text-violet-400',
 }
 
 const SCHEDULE_LABELS: Record<ScheduleType, string> = {

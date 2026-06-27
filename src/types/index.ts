@@ -1,4 +1,4 @@
-export type ActionType = 'webpage' | 'reminder' | 'shutdown' | 'restart' | 'hibernate' | 'lock'
+export type ActionType = 'webpage' | 'reminder' | 'shutdown' | 'restart' | 'hibernate' | 'lock' | 'open_folder' | 'open_file' | 'run_command' | 'run_script' | 'monitor_off' | 'empty_recycle' | 'logoff' | 'close_program' | 'send_udp' | 'auto_screenshot'
 export type ScheduleType = 'once' | 'interval' | 'daily' | 'weekly' | 'monthly'
 
 export interface ScheduleConf {

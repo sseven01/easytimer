@@ -104,6 +104,16 @@ impl Scheduler {
             "restart" => Self::execute_restart(),
             "hibernate" => Self::execute_hibernate(),
             "lock" => Self::execute_lock(),
+            "open_folder" => Self::execute_open_folder(&task.action_value),
+            "open_file" => Self::execute_open_file(&task.action_value),
+            "run_command" => Self::execute_run_command(&task.action_value),
+            "run_script" => Self::execute_run_script(&task.action_value),
+            "monitor_off" => Self::execute_monitor_off(),
+            "empty_recycle" => Self::execute_empty_recycle(),
+            "logoff" => Self::execute_logoff(),
+            "close_program" => Self::execute_close_program(&task.action_value),
+            "send_udp" => Self::execute_send_udp(&task.action_value),
+            "auto_screenshot" => Self::execute_auto_screenshot(&task.action_value),
             _ => {
                 error!("未知的动作类型: {}", task.action_type);
                 Err("未知的动作类型".into())
@@ -293,6 +303,137 @@ impl Scheduler {
             .args(["user32.dll,LockWorkStation"])
             .spawn()
             .map_err(|e| format!("锁屏失败: {}", e))?;
+        Ok(())
+    }
+
+    /// 打开文件夹
+    fn execute_open_folder(path: &str) -> Result<(), String> {
+        if path.is_empty() { return Err("路径为空".into()); }
+        open::that(path).map_err(|e| format!("打开文件夹失败: {}", e))
+    }
+
+    /// 打开文件
+    fn execute_open_file(path: &str) -> Result<(), String> {
+        if path.is_empty() { return Err("路径为空".into()); }
+        open::that(path).map_err(|e| format!("打开文件失败: {}", e))
+    }
+
+    /// 执行DOS命令
+    fn execute_run_command(cmd: &str) -> Result<(), String> {
+        if cmd.is_empty() { return Err("命令为空".into()); }
+        std::process::Command::new("cmd")
+            .args(["/c", cmd])
+            .spawn()
+            .map_err(|e| format!("执行命令失败: {}", e))?;
+        Ok(())
+    }
+
+    /// 执行脚本文件
+    fn execute_run_script(path: &str) -> Result<(), String> {
+        if path.is_empty() { return Err("脚本路径为空".into()); }
+        std::process::Command::new("cmd")
+            .args(["/c", path])
+            .spawn()
+            .map_err(|e| format!("执行脚本失败: {}", e))?;
+        Ok(())
+    }
+
+    /// 关闭显示器
+    fn execute_monitor_off() -> Result<(), String> {
+        #[cfg(target_os = "windows")]
+        {
+            extern "system" {
+                fn SendMessageA(hwnd: isize, msg: u32, wparam: usize, lparam: isize) -> isize;
+            }
+            const HWND_BROADCAST: isize = 0xFFFF;
+            const WM_SYSCOMMAND: u32 = 0x0112;
+            const SC_MONITORPOWER: usize = 0xF170;
+            unsafe {
+                SendMessageA(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, 2);
+            }
+            return Ok(());
+        }
+        #[allow(unreachable_code)]
+        Err("当前系统不支持关闭显示器".into())
+    }
+
+    /// 清空回收站
+    fn execute_empty_recycle() -> Result<(), String> {
+        #[cfg(target_os = "windows")]
+        {
+            extern "system" {
+                fn SHEmptyRecycleBinW(hwnd: isize, pszrootpath: *const u16, dwflags: u32) -> i32;
+            }
+            let ret = unsafe { SHEmptyRecycleBinW(0, std::ptr::null(), 0x0007) };
+            if ret == 0 {
+                return Ok(());
+            }
+            return Err(format!("清空回收站失败, 错误码: {}", ret));
+        }
+        #[allow(unreachable_code)]
+        Err("当前系统不支持清空回收站".into())
+    }
+
+    /// 注销
+    fn execute_logoff() -> Result<(), String> {
+        std::process::Command::new("shutdown")
+            .args(["/l"])
+            .spawn()
+            .map_err(|e| format!("注销失败: {}", e))?;
+        Ok(())
+    }
+
+    /// 关闭程序
+    fn execute_close_program(name: &str) -> Result<(), String> {
+        if name.is_empty() { return Err("进程名为空".into()); }
+        std::process::Command::new("taskkill")
+            .args(["/IM", name, "/F"])
+            .spawn()
+            .map_err(|e| format!("关闭程序失败: {}", e))?;
+        Ok(())
+    }
+
+    /// 发送UDP消息
+    fn execute_send_udp(value: &str) -> Result<(), String> {
+        // 格式: host$port$message
+        let parts: Vec<&str> = value.splitn(3, '$').collect();
+        if parts.len() < 3 {
+            return Err("格式错误，应为: host$port$message".into());
+        }
+        let host = parts[0];
+        let port: u16 = parts[1].parse().map_err(|_| "端口号无效".to_string())?;
+        let message = parts[2];
+        let addr = format!("{}:{}", host, port);
+        let socket = std::net::UdpSocket::bind("0.0.0.0:0")
+            .map_err(|e| format!("创建UDP socket失败: {}", e))?;
+        socket.send_to(message.as_bytes(), &addr)
+            .map_err(|e| format!("发送UDP消息失败: {}", e))?;
+        Ok(())
+    }
+
+    /// 自动截屏
+    fn execute_auto_screenshot(save_path: &str) -> Result<(), String> {
+        let path = if save_path.is_empty() {
+            let home = std::env::var("USERPROFILE").unwrap_or_else(|_| ".".into());
+            format!("{}\\Pictures\\screenshot_{}.png", home, chrono::Local::now().format("%Y%m%d_%H%M%S"))
+        } else {
+            let filename = format!("screenshot_{}.png", chrono::Local::now().format("%Y%m%d_%H%M%S"));
+            let dir = std::path::Path::new(save_path);
+            if !dir.exists() {
+                std::fs::create_dir_all(dir).map_err(|e| format!("创建目录失败: {}", e))?;
+            }
+            format!("{}\\{}", save_path, filename)
+        };
+        let screenshot = screenshots::Screen::all()
+            .map_err(|e| format!("获取屏幕信息失败: {}", e))?
+            .into_iter()
+            .next()
+            .ok_or("未找到显示器")?;
+        let buffer = screenshot.capture()
+            .map_err(|e| format!("截屏失败: {}", e))?;
+        buffer.save(&path)
+            .map_err(|e| format!("保存截图失败: {}", e))?;
+        info!("截屏已保存: {}", path);
         Ok(())
     }
 

@@ -1,16 +1,26 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { X, FolderOpen, File, Terminal, FileText, MonitorOff, Trash2, LogOut, XCircle, Wifi, Camera, Globe, Bell, Power, RefreshCw, Moon, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createTask, updateTask } from '@/services/task'
 import type { Task, ActionType, ScheduleType, ScheduleConf } from '@/types'
 
-const ACTION_TYPES: { value: ActionType; label: string }[] = [
-  { value: 'webpage', label: '打开网页' },
-  { value: 'reminder', label: '弹窗提醒' },
-  { value: 'shutdown', label: '系统关机' },
-  { value: 'restart', label: '系统重启' },
-  { value: 'hibernate', label: '系统休眠' },
-  { value: 'lock', label: '锁屏' },
+const ACTION_TYPES: { value: ActionType; label: string; icon: React.ReactNode }[] = [
+  { value: 'webpage', label: '打开网页', icon: <Globe className="h-4 w-4" /> },
+  { value: 'reminder', label: '弹窗提醒', icon: <Bell className="h-4 w-4" /> },
+  { value: 'shutdown', label: '系统关机', icon: <Power className="h-4 w-4" /> },
+  { value: 'restart', label: '系统重启', icon: <RefreshCw className="h-4 w-4" /> },
+  { value: 'hibernate', label: '系统休眠', icon: <Moon className="h-4 w-4" /> },
+  { value: 'lock', label: '锁屏', icon: <Lock className="h-4 w-4" /> },
+  { value: 'open_folder', label: '打开文件夹', icon: <FolderOpen className="h-4 w-4" /> },
+  { value: 'open_file', label: '打开文件', icon: <File className="h-4 w-4" /> },
+  { value: 'run_command', label: '执行命令', icon: <Terminal className="h-4 w-4" /> },
+  { value: 'run_script', label: '执行脚本', icon: <FileText className="h-4 w-4" /> },
+  { value: 'monitor_off', label: '关闭显示器', icon: <MonitorOff className="h-4 w-4" /> },
+  { value: 'empty_recycle', label: '清空回收站', icon: <Trash2 className="h-4 w-4" /> },
+  { value: 'logoff', label: '注销', icon: <LogOut className="h-4 w-4" /> },
+  { value: 'close_program', label: '关闭程序', icon: <XCircle className="h-4 w-4" /> },
+  { value: 'send_udp', label: '发送UDP消息', icon: <Wifi className="h-4 w-4" /> },
+  { value: 'auto_screenshot', label: '自动截屏', icon: <Camera className="h-4 w-4" /> },
 ]
 
 const SCHEDULE_TYPES: { value: ScheduleType; label: string }[] = [
@@ -125,18 +135,19 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
           {/* Action Type */}
           <div>
             <label className="block text-sm font-medium mb-1.5">动作类型</label>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {ACTION_TYPES.map((at) => (
                 <button
                   key={at.value}
                   type="button"
                   onClick={() => setActionType(at.value)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors ${
                     actionType === at.value
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
                   }`}
                 >
+                  {at.icon}
                   {at.label}
                 </button>
               ))}
@@ -165,6 +176,90 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
                 onChange={(e) => setActionValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="输入提醒内容"
+              />
+            </div>
+          )}
+          {actionType === 'open_folder' && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5">文件夹路径</label>
+              <input
+                type="text"
+                value={actionValue}
+                onChange={(e) => setActionValue(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="C:\Users\Documents"
+              />
+            </div>
+          )}
+          {actionType === 'open_file' && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5">文件路径</label>
+              <input
+                type="text"
+                value={actionValue}
+                onChange={(e) => setActionValue(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="C:\Users\Documents\file.txt"
+              />
+            </div>
+          )}
+          {actionType === 'run_command' && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5">命令</label>
+              <input
+                type="text"
+                value={actionValue}
+                onChange={(e) => setActionValue(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="ipconfig /all"
+              />
+            </div>
+          )}
+          {actionType === 'run_script' && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5">脚本路径</label>
+              <input
+                type="text"
+                value={actionValue}
+                onChange={(e) => setActionValue(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="C:\Scripts\backup.bat"
+              />
+            </div>
+          )}
+          {actionType === 'close_program' && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5">进程名</label>
+              <input
+                type="text"
+                value={actionValue}
+                onChange={(e) => setActionValue(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="notepad.exe"
+              />
+            </div>
+          )}
+          {actionType === 'send_udp' && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5">UDP消息 (格式: 主机$端口$消息)</label>
+              <input
+                type="text"
+                value={actionValue}
+                onChange={(e) => setActionValue(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="127.0.0.1$8080$Hello"
+              />
+            </div>
+          )}
+          {actionType === 'auto_screenshot' && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5">保存路径 (可选)</label>
+              <input
+                type="text"
+                value={actionValue}
+                onChange={(e) => setActionValue(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="留空则保存到图片目录"
               />
             </div>
           )}
