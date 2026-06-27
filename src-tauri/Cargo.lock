@@ -94,6 +94,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "log",
+ "open",
  "rusqlite",
  "serde",
  "serde_json",

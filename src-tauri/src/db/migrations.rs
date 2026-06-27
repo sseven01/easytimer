@@ -37,9 +37,10 @@ CREATE TABLE IF NOT EXISTS settings (
 
 /// Default settings to insert on first run.
 pub const SEED_DEFAULT_SETTINGS: &str = "
-INSERT OR IGNORE INTO settings (key, value) VALUES ('auto_start', '0');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('minimize_to_tray', '1');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('sound_enabled', '0');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('auto_start', 'false');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('minimize_to_tray', 'true');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('notification_sound', 'false');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('notification_direction', 'right');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('log_retain_days', '30');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('notif_duration', '5');
 ";

@@ -76,7 +76,11 @@ impl TaskService {
             .id
             .ok_or_else(|| AppError::NotFound("Task id is required".into()))?;
         let conf = serde_json::to_string(&task.schedule_conf).unwrap_or_else(|_| "{}".into());
-        let next_run = task.calc_next_run();
+        let next_run = if task.enabled {
+            task.calc_next_run()
+        } else {
+            None
+        };
         db.conn().execute(
             "UPDATE tasks SET name=?1, action_type=?2, action_value=?3, \
              schedule_type=?4, schedule_conf=?5, enabled=?6, next_run_at=?7, \

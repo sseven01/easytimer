@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
-import { invoke } from '@tauri-apps/api/core'
 import { Minus, Square, X } from 'lucide-react'
 
 function TitleBar() {
@@ -22,8 +21,7 @@ function TitleBar() {
   }
 
   async function handleClose() {
-    // Hide to tray instead of closing the window
-    await invoke('hide_main_window')
+    await appWindow.close()
   }
 
   return (

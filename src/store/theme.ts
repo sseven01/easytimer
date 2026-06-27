@@ -22,7 +22,8 @@ function applyTheme(resolved: ResolvedTheme) {
   root.classList.add(resolved)
 }
 
-const initialTheme = (localStorage.getItem('theme') as Theme) || 'dark'
+// 默认跟随系统
+const initialTheme = (localStorage.getItem('theme') as Theme) || 'system'
 const initialResolved = resolveTheme(initialTheme)
 applyTheme(initialResolved)
 

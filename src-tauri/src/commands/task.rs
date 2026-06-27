@@ -87,7 +87,31 @@ pub fn delete_task(state: State<'_, AppState>, id: i64) -> Result<(), AppError> 
 #[tauri::command]
 pub fn toggle_task(state: State<'_, AppState>, id: i64, enabled: bool) -> Result<(), AppError> {
     let db = lock_db(&state)?;
-    TaskService::toggle_task(&db, id, enabled)
+    
+    // 切换启用状态
+    TaskService::toggle_task(&db, id, enabled)?;
+    
+    // 如果启用任务，重新计算 next_run_at
+    if enabled {
+        let task = TaskService::get_task(&db, id)?;
+        let next_run = task.calc_next_run();
+        db.conn().execute(
+            "UPDATE tasks SET next_run_at = ?1 WHERE id = ?2",
+            rusqlite::params![next_run, id],
+        )?;
+        log::info!(
+            "任务 {} (ID: {}) 已启用，下次执行时间: {:?}",
+            task.name, id, next_run
+        );
+    } else {
+        // 禁用任务时清除 next_run_at
+        db.conn().execute(
+            "UPDATE tasks SET next_run_at = NULL WHERE id = ?1",
+            rusqlite::params![id],
+        )?;
+    }
+    
+    Ok(())
 }
 
 #[tauri::command]
@@ -112,4 +136,16 @@ pub fn get_setting(state: State<'_, AppState>, key: String) -> Result<Option<Str
 pub fn set_setting(state: State<'_, AppState>, key: String, value: String) -> Result<(), AppError> {
     let db = lock_db(&state)?;
     TaskService::set_setting(&db, &key, &value)
+}
+
+#[tauri::command]
+pub async fn toggle_autostart(app: tauri::AppHandle, enabled: bool) -> Result<(), AppError> {
+    use tauri_plugin_autostart::ManagerExt;
+    let autostart = app.autolaunch();
+    if enabled {
+        autostart.enable().map_err(|e| AppError::Custom(format!("启用开机自启失败: {}", e)))?;
+    } else {
+        autostart.disable().map_err(|e| AppError::Custom(format!("禁用开机自启失败: {}", e)))?;
+    }
+    Ok(())
 }

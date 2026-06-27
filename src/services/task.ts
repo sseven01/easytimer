@@ -9,12 +9,27 @@ export async function getTask(id: number): Promise<Task> {
   return tauriInvoke<Task>('get_task', { id })
 }
 
-export async function createTask(task: Omit<Task, 'id' | 'next_run_at'>): Promise<Task> {
-  return tauriInvoke<Task>('create_task', { task })
+export async function createTask(task: Omit<Task, 'id' | 'next_run_at'>): Promise<number> {
+  // Pass individual parameters to match Rust command signature
+  return tauriInvoke<number>('create_task', {
+    name: task.name,
+    actionType: task.action_type,
+    actionValue: task.action_value,
+    scheduleType: task.schedule_type,
+    scheduleConf: task.schedule_conf,
+  })
 }
 
-export async function updateTask(task: Task): Promise<Task> {
-  return tauriInvoke<Task>('update_task', { task })
+export async function updateTask(task: Task): Promise<void> {
+  return tauriInvoke<void>('update_task', {
+    id: task.id,
+    name: task.name,
+    actionType: task.action_type,
+    actionValue: task.action_value,
+    scheduleType: task.schedule_type,
+    scheduleConf: task.schedule_conf,
+    enabled: task.enabled,
+  })
 }
 
 export async function deleteTask(id: number): Promise<void> {

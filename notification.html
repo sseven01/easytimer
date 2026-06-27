@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notification</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { background: transparent; font-family: 'Segoe UI', system-ui, sans-serif; overflow: hidden; height: 100%; }
+    #root { height: 100%; overflow: hidden; }
+
+    @keyframes slideInRight { 0% { transform: translateX(40px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+    @keyframes slideInLeft { 0% { transform: translateX(-40px); opacity: 0; } 100% { transform: translateX(0); opacity: 1; } }
+    @keyframes slideInBottom { 0% { transform: translateY(40px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+    @keyframes slideInTop { 0% { transform: translateY(-40px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+
+    .anim-right { animation: slideInRight 0.3s ease-out both; }
+    .anim-left { animation: slideInLeft 0.3s ease-out both; }
+    .anim-bottom { animation: slideInBottom 0.3s ease-out both; }
+    .anim-top { animation: slideInTop 0.3s ease-out both; }
+    .anim-center { animation: fadeIn 0.25s ease-out both; }
+  </style>
+  <script type="module" src="/src/notification-main.tsx"></script>
+</head>
+<body>
+  <div id="root"></div>
+</body>
+</html>

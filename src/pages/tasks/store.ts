@@ -28,8 +28,7 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   },
   toggleTask: async (id: number, enabled: boolean) => {
     await apiToggleTask(id, enabled)
-    set({
-      tasks: get().tasks.map((t) => (t.id === id ? { ...t, enabled } : t)),
-    })
+    const tasks = await getTasks()
+    set({ tasks })
   },
 }))

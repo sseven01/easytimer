@@ -13,7 +13,6 @@ use db::Database;
 use log::info;
 use tauri::Manager;
 
-/// Shared application state accessible from all Tauri commands.
 pub struct AppState {
     pub db: Arc<Mutex<Database>>,
 }
@@ -48,12 +47,15 @@ pub fn run() {
         .init_tables()
         .expect("Failed to initialise database tables");
 
-    info!("EasyTimer started – database at: {}", config.db_path.display());
+    info!(
+        "EasyTimer started – database at: {}",
+        config.db_path.display()
+    );
 
     let db_arc = Arc::new(Mutex::new(database));
-    let state = AppState {
-        db: db_arc.clone(),
-    };
+    let state = AppState { db: db_arc.clone() };
+
+    let mut scheduler = services::scheduler::Scheduler::new(db_arc.clone());
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -69,7 +71,7 @@ pub fn run() {
                 .build(),
         )
         .manage(state)
-        .manage(db_arc)  // also register raw Arc for window event handler
+        .manage(db_arc.clone())
         .invoke_handler(tauri::generate_handler![
             commands::task::get_tasks,
             commands::task::get_task,
@@ -81,13 +83,37 @@ pub fn run() {
             commands::task::clear_logs,
             commands::task::get_setting,
             commands::task::set_setting,
+            commands::task::toggle_autostart,
             quit,
             show_main_window,
             hide_main_window,
             updater::check_update,
         ])
-        .setup(|app| {
+        .setup(move |app| {
             tray::setup_tray(app.handle())?;
+
+            // 创建通知窗口（无边框、置顶、深色背景）
+            match tauri::WebviewWindowBuilder::new(
+                app,
+                "notification",
+                tauri::WebviewUrl::App("notification.html".into()),
+            )
+            .title("EasyTimer Notification")
+            .inner_size(400.0, 200.0)
+            .resizable(false)
+            .decorations(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .visible(false)
+            .build()
+            {
+                Ok(_) => info!("通知窗口创建成功"),
+                Err(e) => log::error!("创建通知窗口失败: {}", e),
+            }
+
+            scheduler.set_app_handle(app.handle().clone());
+            scheduler.start();
+
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -98,12 +124,14 @@ pub fn run() {
                     services::task_service::TaskService::get_setting(&db, "minimize_to_tray")
                         .ok()
                         .flatten()
-                        .map(|v| v == "1")
+                        .map(|v| v == "true")
                         .unwrap_or(false)
                 };
                 if should_minimize {
                     api.prevent_close();
                     let _ = window.hide();
+                } else {
+                    window.app_handle().exit(0);
                 }
             }
         })

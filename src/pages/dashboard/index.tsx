@@ -1,54 +1,41 @@
-import { useEffect, useState } from 'react'
-import { Activity, Clock, ListTodo, CheckCircle2 } from 'lucide-react'
-import { getTasks, getLogs } from '@/services/task'
-import type { Task, LogEntry } from '@/types'
+import { AnimatedPage } from '@/components/shared/AnimatedPage'
+import { useTasksStore } from '@/pages/tasks/store'
+import { useEffect } from 'react'
 
 function DashboardPage() {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [logs, setLogs] = useState<LogEntry[]>([])
+  const { tasks, fetchTasks } = useTasksStore()
 
   useEffect(() => {
-    getTasks().then(setTasks).catch(() => {})
-    getLogs().then(setLogs).catch(() => {})
-  }, [])
+    fetchTasks()
+  }, [fetchTasks])
 
-  const totalTasks = tasks.length
-  const enabledTasks = tasks.filter((t) => t.enabled).length
-  const recentLogs = logs.length
-
-  const stats = [
-    { label: '总任务数', value: String(totalTasks), icon: ListTodo, color: 'text-blue-500' },
-    { label: '已启用', value: String(enabledTasks), icon: CheckCircle2, color: 'text-green-500' },
-    { label: '最近日志', value: String(recentLogs), icon: Activity, color: 'text-amber-500' },
-    { label: 'Next Run', value: tasks.find((t) => t.enabled && t.next_run_at)?.next_run_at
-      ? (() => {
-          const d = new Date(tasks.find((t) => t.enabled && t.next_run_at)!.next_run_at!)
-          return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-        })()
-      : '—', icon: Clock, color: 'text-emerald-500' },
-  ]
+  const activeCount = tasks.filter(t => t.enabled).length
+  const disabledCount = tasks.filter(t => !t.enabled).length
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <div
-              key={stat.label}
-              className="rounded-xl border border-border bg-card p-5 shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{stat.label}</span>
-                <Icon className={`h-4 w-4 ${stat.color}`} />
-              </div>
-              <div className="mt-2 text-2xl font-semibold">{stat.value}</div>
-            </div>
-          )
-        })}
+    <AnimatedPage>
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold tracking-tight">仪表盘</h1>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="text-sm font-medium text-muted-foreground">任务总数</h3>
+            <p className="mt-2 text-3xl font-bold">{tasks.length}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="text-sm font-medium text-muted-foreground">已启用</h3>
+            <p className="mt-2 text-3xl font-bold text-green-500">{activeCount}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="text-sm font-medium text-muted-foreground">已禁用</h3>
+            <p className="mt-2 text-3xl font-bold text-muted-foreground">{disabledCount}</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <h3 className="text-sm font-medium text-muted-foreground">下次执行</h3>
+            <p className="mt-2 text-3xl font-bold">—</p>
+          </div>
+        </div>
       </div>
-    </div>
+    </AnimatedPage>
   )
 }
 

@@ -1,4 +1,4 @@
-use chrono::{Datelike, Local, NaiveDate, NaiveTime};
+use chrono::{Datelike, Local, NaiveTime};
 use serde::{Deserialize, Serialize};
 
 /// A scheduled task.
@@ -18,10 +18,6 @@ pub struct Task {
 
 impl Task {
     /// Construct a `Task` from a rusqlite row.
-    ///
-    /// Column order must match the SELECT in the calling query:
-    /// 0 id, 1 name, 2 action_type, 3 action_value, 4 schedule_type,
-    /// 5 schedule_conf, 6 enabled, 7 created_at, 8 updated_at, 9 next_run_at
     pub fn from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
         let schedule_conf_str: String = row.get(5)?;
         Ok(Self {
@@ -39,17 +35,35 @@ impl Task {
     }
 
     /// Calculate the next run time based on `schedule_type` and `schedule_conf`.
-    ///
-    /// Returns the result as an ISO-8601 string (local time).
     pub fn calc_next_run(&self) -> Option<String> {
         let now = Local::now();
         let ts = match self.schedule_type.as_str() {
+            "once" => {
+                let datetime_str = self.schedule_conf.get("datetime")?.as_str()?;
+                let naive_dt = chrono::NaiveDateTime::parse_from_str(datetime_str, "%Y-%m-%dT%H:%M").ok()
+                    .or_else(|| chrono::NaiveDateTime::parse_from_str(datetime_str, "%Y-%m-%dT%H:%M:%S").ok())?;
+                let local_dt = naive_dt.and_local_timezone(Local).single()?;
+                if local_dt <= now {
+                    return None; // 已过期
+                }
+                Some(local_dt)
+            }
             "interval" => {
-                let seconds = self
+                let raw = self
                     .schedule_conf
                     .get("interval")?
                     .as_i64()
                     .unwrap_or(60);
+                let unit = self
+                    .schedule_conf
+                    .get("unit")
+                    .and_then(|u| u.as_str())
+                    .unwrap_or("seconds");
+                let seconds = match unit {
+                    "hours" => raw * 3600,
+                    "minutes" => raw * 60,
+                    _ => raw,
+                };
                 Some(now + chrono::Duration::seconds(seconds))
             }
             "daily" => {
@@ -59,7 +73,6 @@ impl Task {
                 let dt = today.and_time(naive_time);
                 let local_dt = dt.and_local_timezone(Local).single()?;
                 if local_dt <= now {
-                    // Time already passed today → tomorrow
                     Some((dt + chrono::Duration::days(1)).and_local_timezone(Local).single()?)
                 } else {
                     Some(local_dt)
@@ -68,34 +81,32 @@ impl Task {
             "weekly" => {
                 let time_str = self.schedule_conf.get("time")?.as_str()?;
                 let naive_time = NaiveTime::parse_from_str(time_str, "%H:%M").ok()?;
-                let weekday_num = self.schedule_conf.get("weekday")?.as_u64()?; // 0=Mon..6=Sun
-                let weekdays = [
-                    chrono::Weekday::Mon, chrono::Weekday::Tue, chrono::Weekday::Wed,
-                    chrono::Weekday::Thu, chrono::Weekday::Fri, chrono::Weekday::Sat, chrono::Weekday::Sun,
-                ];
-                let target_weekday = weekdays.get((weekday_num % 7) as usize)?;
-                let current_weekday = now.weekday();
-                let days_ahead = {
-                    let diff = (target_weekday.num_days_from_monday() as i64
-                        - current_weekday.num_days_from_monday() as i64)
-                        .rem_euclid(7);
-                    if diff == 0 {
-                        // Same weekday – check if time has passed
-                        let candidate =
-                            now.date_naive().and_time(naive_time);
-                        let local_candidate =
-                            candidate.and_local_timezone(Local).single()?;
-                        if local_candidate <= now {
-                            7
-                        } else {
-                            return Some(local_candidate.to_string());
-                        }
-                    } else {
-                        diff
+                let weekdays = self.schedule_conf.get("weekdays")?.as_array()?;
+                
+                // 找到最近的一个匹配的星期几
+                let current_weekday = now.weekday().num_days_from_monday() as i64;
+                let mut min_days_ahead = 7i64;
+                
+                for wd in weekdays {
+                    let target = wd.as_i64()? as i64;
+                    let mut diff = target - current_weekday;
+                    if diff <= 0 {
+                        diff += 7;
                     }
-                };
-                let target_date =
-                    now.date_naive() + chrono::Duration::days(days_ahead);
+                    // 如果是今天，检查时间是否已过
+                    if diff == 0 {
+                        let candidate = now.date_naive().and_time(naive_time);
+                        let local_candidate = candidate.and_local_timezone(Local).single()?;
+                        if local_candidate <= now {
+                            diff = 7;
+                        }
+                    }
+                    if diff < min_days_ahead {
+                        min_days_ahead = diff;
+                    }
+                }
+                
+                let target_date = now.date_naive() + chrono::Duration::days(min_days_ahead);
                 Some(
                     target_date
                         .and_time(naive_time)
@@ -106,35 +117,38 @@ impl Task {
             "monthly" => {
                 let time_str = self.schedule_conf.get("time")?.as_str()?;
                 let naive_time = NaiveTime::parse_from_str(time_str, "%H:%M").ok()?;
-                let day = self.schedule_conf.get("day")?.as_u64()? as u32;
-                let mut year = now.year();
-                let mut month = now.month();
-                // If the day has already passed this month, go to next month
-                let candidate = NaiveDate::from_ymd_opt(year, month, day);
-                if let Some(d) = candidate {
-                    let dt = d.and_time(naive_time);
-                    let local_dt = dt.and_local_timezone(Local).single()?;
-                    if local_dt <= now {
-                        month += 1;
-                        if month > 12 {
-                            month = 1;
-                            year += 1;
+                let days = self.schedule_conf.get("days")?.as_array()?;
+
+                let mut best: Option<chrono::DateTime<Local>> = None;
+
+                for d in days {
+                    let target_day = d.as_i64()? as u32;
+
+                    // Try this month
+                    if let Some(naive) = now.date_naive().with_day(target_day) {
+                        if let Some(local) = naive.and_time(naive_time).and_local_timezone(Local).single() {
+                            if local > now {
+                                if best.is_none() || local < best.unwrap() {
+                                    best = Some(local);
+                                }
+                                continue;
+                            }
                         }
                     }
-                } else {
-                    month += 1;
-                    if month > 12 {
-                        month = 1;
-                        year += 1;
+
+                    // Try next month: go to day 1 of next month, then with_day
+                    if let Some(next_first) = (now.date_naive() + chrono::Duration::days(32)).with_day(1) {
+                        if let Some(naive) = next_first.with_day(target_day) {
+                            if let Some(local) = naive.and_time(naive_time).and_local_timezone(Local).single() {
+                                if best.is_none() || local < best.unwrap() {
+                                    best = Some(local);
+                                }
+                            }
+                        }
                     }
                 }
-                let target_date = NaiveDate::from_ymd_opt(year, month, day.min(28))?;
-                Some(
-                    target_date
-                        .and_time(naive_time)
-                        .and_local_timezone(Local)
-                        .single()?,
-                )
+
+                best
             }
             _ => None,
         };
@@ -155,9 +169,6 @@ pub struct LogEntry {
 }
 
 impl LogEntry {
-    /// Construct a `LogEntry` from a rusqlite row.
-    ///
-    /// Column order: 0 id, 1 task_id, 2 task_name, 3 action, 4 status, 5 message, 6 executed_at
     pub fn from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Self> {
         Ok(Self {
             id: row.get(0)?,
