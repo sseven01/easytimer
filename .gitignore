@@ -1,1 +1,7 @@
-node_modules/\ndist/\ntarget/\nsrc-tauri/target/
+node_modules/
+dist/
+target/
+src-tauri/target/
+tmp/
+.mimocode/
+*.log
