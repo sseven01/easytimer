@@ -48,11 +48,11 @@ pub async fn check_update() -> Result<UpdateInfo, String> {
     let latest_version = release.tag_name.trim_start_matches('v').to_string();
     let has_update = latest_version != current_version;
 
-    // 查找 Windows 安装包
+    // 查找可执行文件
     let download_url = release
         .assets
         .iter()
-        .find(|a| a.name.contains("setup.exe") || a.name.contains(".msi"))
+        .find(|a| a.name.ends_with(".exe"))
         .map(|a| a.browser_download_url.clone());
 
     Ok(UpdateInfo {
