@@ -4,7 +4,7 @@ import { AnimatedPage } from '@/components/shared/AnimatedPage'
 import { checkUpdate, type UpdateInfo } from '@/services/update'
 
 const APP_NAME = 'EasyTimer'
-const VERSION = '0.1.0'
+const VERSION = '0.1.1'
 const AUTHOR = '青城离歌'
 const YEAR = new Date().getFullYear()
 

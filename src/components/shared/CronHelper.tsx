@@ -81,7 +81,7 @@ export function CronHelper({ value, onChange }: CronHelperProps) {
       validateCron(value).then(ok => {
         if (cancelled) return
         if (ok) {
-          previewCron(value, 5).then(p => { if (!cancelled) setPreview(p) }).catch(() => {})
+          previewCron(value, 1).then(p => { if (!cancelled) setPreview(p) }).catch(() => {})
         } else {
           setPreview([])
         }
@@ -221,7 +221,7 @@ export function CronHelper({ value, onChange }: CronHelperProps) {
         <div>
           <label className="flex items-center gap-1 text-xs font-medium text-muted-foreground mb-1.5">
             <Clock className="h-3 w-3" />
-            下次 {preview.length} 次执行
+            下次执行时间
           </label>
           <div className="rounded-lg bg-muted/50 p-2 space-y-0.5">
             {preview.map((t, i) => (
