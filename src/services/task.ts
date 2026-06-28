@@ -1,5 +1,5 @@
 import { tauriInvoke } from './base'
-import type { Task, LogEntry } from '@/types'
+import type { Task, LogEntry, Trigger } from '@/types'
 
 export async function getTasks(): Promise<Task[]> {
   return tauriInvoke<Task[]>('get_tasks')
@@ -9,14 +9,11 @@ export async function getTask(id: number): Promise<Task> {
   return tauriInvoke<Task>('get_task', { id })
 }
 
-export async function createTask(task: Omit<Task, 'id' | 'next_run_at'>): Promise<number> {
-  // Pass individual parameters to match Rust command signature
+export async function createTask(task: { name: string; action_type: string; action_value: string }): Promise<number> {
   return tauriInvoke<number>('create_task', {
     name: task.name,
     actionType: task.action_type,
     actionValue: task.action_value,
-    scheduleType: task.schedule_type,
-    scheduleConf: task.schedule_conf,
   })
 }
 
@@ -26,8 +23,6 @@ export async function updateTask(task: Task): Promise<void> {
     name: task.name,
     actionType: task.action_type,
     actionValue: task.action_value,
-    scheduleType: task.schedule_type,
-    scheduleConf: task.schedule_conf,
     enabled: task.enabled,
   })
 }
@@ -54,4 +49,34 @@ export async function getSetting(key: string): Promise<string | null> {
 
 export async function setSetting(key: string, value: string): Promise<void> {
   return tauriInvoke<void>('set_setting', { key, value })
+}
+
+// ─── Trigger API ─────────────────────────────────
+
+export async function getTriggers(taskId: number): Promise<Trigger[]> {
+  return tauriInvoke<Trigger[]>('get_triggers', { taskId })
+}
+
+export async function addTrigger(taskId: number, cronExpression: string): Promise<number> {
+  return tauriInvoke<number>('add_trigger', { taskId, cronExpression })
+}
+
+export async function updateTrigger(id: number, cronExpression: string, enabled: boolean): Promise<void> {
+  return tauriInvoke<void>('update_trigger', { id, cronExpression, enabled })
+}
+
+export async function deleteTrigger(id: number): Promise<void> {
+  return tauriInvoke<void>('delete_trigger', { id })
+}
+
+export async function toggleTrigger(id: number, enabled: boolean): Promise<void> {
+  return tauriInvoke<void>('toggle_trigger', { id, enabled })
+}
+
+export async function validateCron(expression: string): Promise<boolean> {
+  return tauriInvoke<boolean>('validate_cron', { expression })
+}
+
+export async function previewCron(expression: string, count?: number): Promise<string[]> {
+  return tauriInvoke<string[]>('preview_cron', { expression, count })
 }

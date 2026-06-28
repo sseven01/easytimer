@@ -4,10 +4,10 @@ import { useAppStore } from '@/store/app'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/', label: '仪表盘', icon: LayoutDashboard },
   { path: '/tasks', label: '任务', icon: ListTodo },
   { path: '/logs', label: '日志', icon: FileText },
-  { path: '/settings', label: 'Settings', icon: Settings },
+  { path: '/settings', label: '设置', icon: Settings },
 ]
 
 function Sidebar() {

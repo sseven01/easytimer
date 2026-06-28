@@ -56,10 +56,11 @@ function DashboardPage() {
   const activeCount = tasks.filter(t => t.enabled).length
   const disabledCount = tasks.filter(t => !t.enabled).length
 
-  // 找到最近的下次执行任务
+  // 找到最近的下次执行任务（基于触发器）
   const nextTask = tasks
-    .filter(t => t.enabled && t.next_run_at)
-    .sort((a, b) => new Date(a.next_run_at!).getTime() - new Date(b.next_run_at!).getTime())[0]
+    .filter(t => t.enabled && t.triggers && t.triggers.length > 0)
+    .flatMap(t => (t.triggers || []).filter(tr => tr.enabled && tr.next_run_at).map(tr => ({ task: t, nextRun: tr.next_run_at! })))
+    .sort((a, b) => new Date(a.nextRun).getTime() - new Date(b.nextRun).getTime())[0]
 
   // 按类型统计
   const typeCount: Record<string, number> = {}
@@ -99,9 +100,9 @@ function DashboardPage() {
             </div>
             {nextTask ? (
               <>
-                <p className="mt-2 text-lg font-bold truncate">{nextTask.name}</p>
+                <p className="mt-2 text-lg font-bold truncate">{nextTask.task.name}</p>
                 <p className="mt-1 text-xs text-primary font-medium">
-                  {formatCountdown(nextTask.next_run_at!)}
+                  {formatCountdown(nextTask.nextRun)}
                 </p>
               </>
             ) : (

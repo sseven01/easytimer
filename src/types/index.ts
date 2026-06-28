@@ -1,13 +1,12 @@
 export type ActionType = 'webpage' | 'reminder' | 'shutdown' | 'restart' | 'hibernate' | 'lock' | 'open_folder' | 'open_file' | 'run_command' | 'run_script' | 'monitor_off' | 'empty_recycle' | 'logoff' | 'close_program' | 'send_udp' | 'auto_screenshot'
-export type ScheduleType = 'once' | 'interval' | 'daily' | 'weekly' | 'monthly'
 
-export interface ScheduleConf {
-  datetime?: string
-  interval?: number
-  unit?: 'seconds' | 'minutes' | 'hours'
-  time?: string
-  weekdays?: number[]
-  days?: number[]
+export interface Trigger {
+  id: number | null
+  task_id: number
+  cron_expression: string
+  enabled: boolean
+  next_run_at: string | null
+  created_at: string | null
 }
 
 export interface Task {
@@ -15,10 +14,10 @@ export interface Task {
   name: string
   action_type: ActionType
   action_value: string
-  schedule_type: ScheduleType
-  schedule_conf: ScheduleConf
   enabled: boolean
-  next_run_at: string | null
+  created_at: string | null
+  updated_at: string | null
+  triggers?: Trigger[]
 }
 
 export interface LogEntry {

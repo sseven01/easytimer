@@ -1,4 +1,3 @@
-use serde_json::Value as JsonValue;
 use tauri::State;
 
 use crate::db::models::Task;
@@ -6,7 +5,6 @@ use crate::error::AppError;
 use crate::services::task_service::TaskService;
 use crate::AppState;
 
-/// Helper: lock the database Mutex.
 fn lock_db(state: &AppState) -> Result<std::sync::MutexGuard<'_, crate::db::Database>, AppError> {
     state
         .db
@@ -32,8 +30,6 @@ pub fn create_task(
     name: String,
     action_type: String,
     action_value: String,
-    schedule_type: String,
-    schedule_conf: JsonValue,
 ) -> Result<i64, AppError> {
     let db = lock_db(&state)?;
     let task = Task {
@@ -41,12 +37,9 @@ pub fn create_task(
         name,
         action_type,
         action_value,
-        schedule_type,
-        schedule_conf,
         enabled: true,
         created_at: None,
         updated_at: None,
-        next_run_at: None,
     };
     TaskService::add_task(&db, &task)
 }
@@ -58,8 +51,6 @@ pub fn update_task(
     name: String,
     action_type: String,
     action_value: String,
-    schedule_type: String,
-    schedule_conf: JsonValue,
     enabled: bool,
 ) -> Result<(), AppError> {
     let db = lock_db(&state)?;
@@ -68,12 +59,9 @@ pub fn update_task(
         name,
         action_type,
         action_value,
-        schedule_type,
-        schedule_conf,
         enabled,
         created_at: None,
         updated_at: None,
-        next_run_at: None,
     };
     TaskService::update_task(&db, &task)
 }
@@ -87,31 +75,7 @@ pub fn delete_task(state: State<'_, AppState>, id: i64) -> Result<(), AppError> 
 #[tauri::command]
 pub fn toggle_task(state: State<'_, AppState>, id: i64, enabled: bool) -> Result<(), AppError> {
     let db = lock_db(&state)?;
-    
-    // 切换启用状态
-    TaskService::toggle_task(&db, id, enabled)?;
-    
-    // 如果启用任务，重新计算 next_run_at
-    if enabled {
-        let task = TaskService::get_task(&db, id)?;
-        let next_run = task.calc_next_run();
-        db.conn().execute(
-            "UPDATE tasks SET next_run_at = ?1 WHERE id = ?2",
-            rusqlite::params![next_run, id],
-        )?;
-        log::info!(
-            "任务 {} (ID: {}) 已启用，下次执行时间: {:?}",
-            task.name, id, next_run
-        );
-    } else {
-        // 禁用任务时清除 next_run_at
-        db.conn().execute(
-            "UPDATE tasks SET next_run_at = NULL WHERE id = ?1",
-            rusqlite::params![id],
-        )?;
-    }
-    
-    Ok(())
+    TaskService::toggle_task(&db, id, enabled)
 }
 
 #[tauri::command]
@@ -148,4 +112,61 @@ pub async fn toggle_autostart(app: tauri::AppHandle, enabled: bool) -> Result<()
         autostart.disable().map_err(|e| AppError::Custom(format!("禁用开机自启失败: {}", e)))?;
     }
     Ok(())
+}
+
+// ─── Trigger Commands ─────────────────────────────────────
+
+#[tauri::command]
+pub fn get_triggers(state: State<'_, AppState>, task_id: i64) -> Result<Vec<crate::db::models::Trigger>, AppError> {
+    let db = lock_db(&state)?;
+    TaskService::get_triggers(&db, task_id)
+}
+
+#[tauri::command]
+pub fn add_trigger(state: State<'_, AppState>, task_id: i64, cron_expression: String) -> Result<i64, AppError> {
+    let db = lock_db(&state)?;
+    TaskService::add_trigger(&db, task_id, &cron_expression)
+}
+
+#[tauri::command]
+pub fn update_trigger(state: State<'_, AppState>, id: i64, cron_expression: String, enabled: bool) -> Result<(), AppError> {
+    let db = lock_db(&state)?;
+    TaskService::update_trigger(&db, id, &cron_expression, enabled)
+}
+
+#[tauri::command]
+pub fn delete_trigger(state: State<'_, AppState>, id: i64) -> Result<(), AppError> {
+    let db = lock_db(&state)?;
+    TaskService::delete_trigger(&db, id)
+}
+
+#[tauri::command]
+pub fn toggle_trigger(state: State<'_, AppState>, id: i64, enabled: bool) -> Result<(), AppError> {
+    let db = lock_db(&state)?;
+    TaskService::toggle_trigger(&db, id, enabled)
+}
+
+#[tauri::command]
+pub fn validate_cron(expression: String) -> Result<bool, AppError> {
+    crate::db::models::CronExpr::parse(&expression)
+        .map(|_| true)
+        .map_err(|e| AppError::Custom(e))
+}
+
+#[tauri::command]
+pub fn preview_cron(expression: String, count: Option<i32>) -> Result<Vec<String>, AppError> {
+    let cron = crate::db::models::CronExpr::parse(&expression)
+        .map_err(|e| AppError::Custom(e))?;
+    let n = count.unwrap_or(5).min(20) as usize;
+    let mut results = Vec::new();
+    let mut after = chrono::Local::now();
+    for _ in 0..n {
+        if let Some(next) = cron.next_after(after) {
+            results.push(next.format("%Y-%m-%d %H:%M:%S").to_string());
+            after = next;
+        } else {
+            break;
+        }
+    }
+    Ok(results)
 }

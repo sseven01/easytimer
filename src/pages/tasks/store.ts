@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Task } from '@/types'
-import { getTasks, deleteTask as apiDeleteTask, toggleTask as apiToggleTask } from '@/services/task'
+import { getTasks, deleteTask as apiDeleteTask, toggleTask as apiToggleTask, getTriggers } from '@/services/task'
 
 interface TasksState {
   tasks: Task[]
@@ -17,7 +17,14 @@ export const useTasksStore = create<TasksState>((set, get) => ({
     set({ loading: true })
     try {
       const tasks = await getTasks()
-      set({ tasks, loading: false })
+      // Fetch triggers for each task
+      const tasksWithTriggers = await Promise.all(
+        tasks.map(async (t) => {
+          const triggers = t.id !== null ? await getTriggers(t.id) : []
+          return { ...t, triggers }
+        })
+      )
+      set({ tasks: tasksWithTriggers, loading: false })
     } catch {
       set({ loading: false })
     }
@@ -29,6 +36,12 @@ export const useTasksStore = create<TasksState>((set, get) => ({
   toggleTask: async (id: number, enabled: boolean) => {
     await apiToggleTask(id, enabled)
     const tasks = await getTasks()
-    set({ tasks })
+    const tasksWithTriggers = await Promise.all(
+      tasks.map(async (t) => {
+        const triggers = t.id !== null ? await getTriggers(t.id) : []
+        return { ...t, triggers }
+      })
+    )
+    set({ tasks: tasksWithTriggers })
   },
 }))

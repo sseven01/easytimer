@@ -5,7 +5,7 @@ import { AnimatedPage } from '@/components/shared/AnimatedPage'
 import { ToggleSwitch } from '@/components/ui/toggle-switch'
 import { useTasksStore } from './store'
 import TaskDialog from './components/TaskDialog'
-import type { Task, ActionType, ScheduleType } from '@/types'
+import type { Task, ActionType } from '@/types'
 
 const TYPE_LABELS: Record<ActionType, string> = {
   webpage: '网页',
@@ -43,24 +43,6 @@ const TYPE_COLORS: Record<ActionType, string> = {
   close_program: 'bg-pink-500/20 text-pink-400',
   send_udp: 'bg-indigo-500/20 text-indigo-400',
   auto_screenshot: 'bg-violet-500/20 text-violet-400',
-}
-
-const SCHEDULE_LABELS: Record<ScheduleType, string> = {
-  once: '一次性',
-  interval: '间隔',
-  daily: '每日',
-  weekly: '每周',
-  monthly: '每月',
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—'
-  const d = new Date(dateStr)
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  const hh = String(d.getHours()).padStart(2, '0')
-  const mi = String(d.getMinutes()).padStart(2, '0')
-  return `${mm}-${dd} ${hh}:${mi}`
 }
 
 function TasksPage() {
@@ -124,8 +106,7 @@ function TasksPage() {
                   <th className="px-4 py-3 font-medium w-16">开关</th>
                   <th className="px-4 py-3 font-medium">名称</th>
                   <th className="px-4 py-3 font-medium">类型</th>
-                  <th className="px-4 py-3 font-medium">计划</th>
-                  <th className="px-4 py-3 font-medium">下次执行</th>
+                  <th className="px-4 py-3 font-medium">触发器</th>
                   <th className="px-4 py-3 font-medium w-24">操作</th>
                 </tr>
               </thead>
@@ -154,13 +135,23 @@ function TasksPage() {
                         {TYPE_LABELS[task.action_type]}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center rounded-full bg-purple-500/20 text-purple-400 px-2.5 py-0.5 text-xs font-medium">
-                        {SCHEDULE_LABELS[task.schedule_type]}
-                      </span>
-                    </td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">
-                      {formatDate(task.next_run_at)}
+                      {task.triggers && task.triggers.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {task.triggers.slice(0, 3).map((tr) => (
+                            <span key={tr.id} className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono ${
+                              tr.enabled ? 'bg-purple-500/20 text-purple-400' : 'bg-muted text-muted-foreground line-through'
+                            }`}>
+                              {tr.cron_expression}
+                            </span>
+                          ))}
+                          {task.triggers.length > 3 && (
+                            <span className="text-[10px] text-muted-foreground">+{task.triggers.length - 3}</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">无触发器</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-1">

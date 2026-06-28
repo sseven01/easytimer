@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { invoke } from '@tauri-apps/api/core'
 import { useThemeStore } from '@/store/theme'
 import { getSetting, setSetting } from '@/services/task'
@@ -15,6 +16,7 @@ const DIRECTION_OPTIONS: { value: AnimationDirection; label: string; icon: strin
 ]
 
 function SettingsPage() {
+  const navigate = useNavigate()
   const { theme, setTheme } = useThemeStore()
   const [autoStart, setAutoStart] = useState(false)
   const [minimizeTray, setMinimizeTray] = useState(false)
@@ -145,6 +147,21 @@ function SettingsPage() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* 关于 */}
+        <div className="rounded-xl border border-border bg-card shadow-sm">
+          <button
+            type="button"
+            onClick={() => navigate('/about')}
+            className="flex items-center justify-between w-full p-5 text-left hover:bg-secondary/50 transition-colors"
+          >
+            <div>
+              <h3 className="text-sm font-medium">关于 EasyTimer</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">版本信息与版权声明</p>
+            </div>
+            <span className="text-muted-foreground">→</span>
+          </button>
         </div>
       </div>
     </AnimatedPage>

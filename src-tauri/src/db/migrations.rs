@@ -5,12 +5,41 @@ CREATE TABLE IF NOT EXISTS tasks (
     name          TEXT    NOT NULL,
     action_type   TEXT    NOT NULL,
     action_value  TEXT    DEFAULT '',
-    schedule_type TEXT    NOT NULL,
-    schedule_conf TEXT    NOT NULL DEFAULT '{}',
     enabled       INTEGER DEFAULT 1,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    next_run_at   TIMESTAMP
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+";
+
+/// Migration: recreate tasks table without old schedule columns.
+/// This is needed because SQLite doesn't support ALTER TABLE DROP COLUMN
+/// and the old table had NOT NULL constraints on schedule_type.
+pub const MIGRATE_TASKS_V2: &str = "
+CREATE TABLE IF NOT EXISTS tasks_new (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    name          TEXT    NOT NULL,
+    action_type   TEXT    NOT NULL,
+    action_value  TEXT    DEFAULT '',
+    enabled       INTEGER DEFAULT 1,
+    created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+INSERT OR IGNORE INTO tasks_new (id, name, action_type, action_value, enabled, created_at, updated_at)
+    SELECT id, name, action_type, action_value, enabled, created_at, updated_at FROM tasks;
+DROP TABLE IF EXISTS tasks;
+ALTER TABLE tasks_new RENAME TO tasks;
+";
+
+/// Schema migration: triggers table (schedule rules per task).
+pub const CREATE_TRIGGERS_TABLE: &str = "
+CREATE TABLE IF NOT EXISTS triggers (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    task_id         INTEGER NOT NULL,
+    cron_expression TEXT    NOT NULL,
+    enabled         INTEGER DEFAULT 1,
+    next_run_at     TIMESTAMP,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 ";
 

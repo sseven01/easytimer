@@ -1,8 +1,10 @@
-import { useState } from 'react'
-import { X, FolderOpen, File, Terminal, FileText, MonitorOff, Trash2, LogOut, XCircle, Wifi, Camera, Globe, Bell, Power, RefreshCw, Moon, Lock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, Plus, Trash2, FolderOpen, File, Terminal, FileText, MonitorOff, LogOut, XCircle, Wifi, Camera, Globe, Bell, Power, RefreshCw, Moon, Lock, ToggleLeft, ToggleRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { createTask, updateTask } from '@/services/task'
-import type { Task, ActionType, ScheduleType, ScheduleConf } from '@/types'
+import { createTask, updateTask, getTriggers, addTrigger, deleteTrigger, toggleTrigger } from '@/services/task'
+import { CronHelper } from '@/components/shared/CronHelper'
+import { cronToChinese } from '@/utils/cron'
+import type { Task, ActionType, Trigger } from '@/types'
 
 const ACTION_TYPES: { value: ActionType; label: string; icon: React.ReactNode }[] = [
   { value: 'webpage', label: '打开网页', icon: <Globe className="h-4 w-4" /> },
@@ -23,22 +25,6 @@ const ACTION_TYPES: { value: ActionType; label: string; icon: React.ReactNode }[
   { value: 'auto_screenshot', label: '自动截屏', icon: <Camera className="h-4 w-4" /> },
 ]
 
-const SCHEDULE_TYPES: { value: ScheduleType; label: string }[] = [
-  { value: 'once', label: '一次性' },
-  { value: 'interval', label: '间隔' },
-  { value: 'daily', label: '每日' },
-  { value: 'weekly', label: '每周' },
-  { value: 'monthly', label: '每月' },
-]
-
-const INTERVAL_UNITS = [
-  { value: 'seconds', label: '秒' },
-  { value: 'minutes', label: '分钟' },
-  { value: 'hours', label: '小时' },
-] as const
-
-const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日']
-
 interface TaskDialogProps {
   task: Task | null
   onClose: () => void
@@ -49,11 +35,19 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
   const [name, setName] = useState(task?.name ?? '')
   const [actionType, setActionType] = useState<ActionType>(task?.action_type ?? 'webpage')
   const [actionValue, setActionValue] = useState(task?.action_value ?? '')
-  const [scheduleType, setScheduleType] = useState<ScheduleType>(task?.schedule_type ?? 'once')
-  const [conf, setConf] = useState<ScheduleConf>(task?.schedule_conf ?? {})
+  const [triggers, setTriggers] = useState<Trigger[]>(task?.triggers ?? [])
+  const [pendingTriggers, setPendingTriggers] = useState<string[]>([])
+  const [newCron, setNewCron] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showAddTrigger, setShowAddTrigger] = useState(false)
 
   const isEdit = task?.id !== null && task?.id !== undefined
+
+  useEffect(() => {
+    if (isEdit && task?.id) {
+      getTriggers(task.id).then(setTriggers).catch(() => {})
+    }
+  }, [isEdit, task?.id])
 
   async function handleSave() {
     setSaving(true)
@@ -64,21 +58,17 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
           name,
           action_type: actionType,
           action_value: actionValue,
-          schedule_type: scheduleType,
-          schedule_conf: conf,
           enabled: task.enabled,
-          next_run_at: task.next_run_at,
+          created_at: null,
+          updated_at: null,
         })
       } else {
-        await createTask({
-          name,
-          action_type: actionType,
-          action_value: actionValue,
-          schedule_type: scheduleType,
-          schedule_conf: conf,
-          enabled: true,
-        })
+        const taskId = await createTask({ name, action_type: actionType, action_value: actionValue })
+        for (const cron of pendingTriggers) {
+          await addTrigger(taskId, cron)
+        }
       }
+      // Add any new triggers that were added during creation
       onSaved()
       onClose()
     } catch (err) {
@@ -88,30 +78,45 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
     }
   }
 
-  function toggleWeekday(idx: number) {
-    const current = conf.weekdays ?? []
-    setConf({
-      ...conf,
-      weekdays: current.includes(idx) ? current.filter((d) => d !== idx) : [...current, idx],
-    })
+  async function handleAddTrigger() {
+    if (!newCron.trim()) return
+    if (isEdit && task?.id) {
+      try {
+        const id = await addTrigger(task.id, newCron)
+        setTriggers([...triggers, { id, task_id: task.id!, cron_expression: newCron, enabled: true, next_run_at: null, created_at: null }])
+      } catch (err) {
+        console.error('添加触发器失败:', err)
+      }
+    } else {
+      setPendingTriggers([...pendingTriggers, newCron])
+    }
+    setNewCron('')
+    setShowAddTrigger(false)
   }
 
-  function toggleDay(day: number) {
-    const current = conf.days ?? []
-    setConf({
-      ...conf,
-      days: current.includes(day) ? current.filter((d) => d !== day) : [...current, day],
-    })
+  async function handleDeleteTrigger(id: number) {
+    try {
+      await deleteTrigger(id)
+      setTriggers(triggers.filter(t => t.id !== id))
+    } catch (err) {
+      console.error('删除触发器失败:', err)
+    }
+  }
+
+  async function handleToggleTrigger(id: number, enabled: boolean) {
+    try {
+      await toggleTrigger(id, enabled)
+      setTriggers(triggers.map(t => t.id === id ? { ...t, enabled } : t))
+    } catch (err) {
+      console.error('切换触发器失败:', err)
+    }
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div
-        className="w-full max-w-lg rounded-xl bg-card border border-border shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="w-full max-w-lg max-h-[85vh] flex flex-col rounded-xl bg-card border border-border shadow-lg" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <h2 className="text-lg font-semibold">{isEdit ? '编辑任务' : '新建任务'}</h2>
           <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="h-5 w-5" />
@@ -119,17 +124,13 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
         </div>
 
         {/* Body */}
-        <div className="px-6 py-4 space-y-5 max-h-[60vh] overflow-y-auto">
+        <div className="px-6 py-4 space-y-5 overflow-y-auto flex-1 min-h-0">
           {/* Name */}
           <div>
             <label className="block text-sm font-medium mb-1.5">任务名称</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)}
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="输入任务名称"
-            />
+              placeholder="输入任务名称" />
           </div>
 
           {/* Action Type */}
@@ -137,18 +138,11 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
             <label className="block text-sm font-medium mb-1.5">动作类型</label>
             <div className="grid grid-cols-4 gap-2">
               {ACTION_TYPES.map((at) => (
-                <button
-                  key={at.value}
-                  type="button"
-                  onClick={() => setActionType(at.value)}
+                <button key={at.value} type="button" onClick={() => setActionType(at.value)}
                   className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium transition-colors ${
-                    actionType === at.value
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  }`}
-                >
-                  {at.icon}
-                  {at.label}
+                    actionType === at.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}>
+                  {at.icon}{at.label}
                 </button>
               ))}
             </div>
@@ -158,255 +152,134 @@ function TaskDialog({ task, onClose, onSaved }: TaskDialogProps) {
           {actionType === 'webpage' && (
             <div>
               <label className="block text-sm font-medium mb-1.5">网页地址</label>
-              <input
-                type="text"
-                value={actionValue}
-                onChange={(e) => setActionValue(e.target.value)}
+              <input type="text" value={actionValue} onChange={(e) => setActionValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="https://example.com"
-              />
+                placeholder="https://example.com" />
             </div>
           )}
           {actionType === 'reminder' && (
             <div>
               <label className="block text-sm font-medium mb-1.5">提醒内容</label>
-              <input
-                type="text"
-                value={actionValue}
-                onChange={(e) => setActionValue(e.target.value)}
+              <input type="text" value={actionValue} onChange={(e) => setActionValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="输入提醒内容"
-              />
+                placeholder="输入提醒内容" />
             </div>
           )}
           {actionType === 'open_folder' && (
             <div>
               <label className="block text-sm font-medium mb-1.5">文件夹路径</label>
-              <input
-                type="text"
-                value={actionValue}
-                onChange={(e) => setActionValue(e.target.value)}
+              <input type="text" value={actionValue} onChange={(e) => setActionValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="C:\Users\Documents"
-              />
+                placeholder="C:\Users\Documents" />
             </div>
           )}
           {actionType === 'open_file' && (
             <div>
               <label className="block text-sm font-medium mb-1.5">文件路径</label>
-              <input
-                type="text"
-                value={actionValue}
-                onChange={(e) => setActionValue(e.target.value)}
+              <input type="text" value={actionValue} onChange={(e) => setActionValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="C:\Users\Documents\file.txt"
-              />
+                placeholder="C:\Users\Documents\file.txt" />
             </div>
           )}
           {actionType === 'run_command' && (
             <div>
               <label className="block text-sm font-medium mb-1.5">命令</label>
-              <input
-                type="text"
-                value={actionValue}
-                onChange={(e) => setActionValue(e.target.value)}
+              <input type="text" value={actionValue} onChange={(e) => setActionValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="ipconfig /all"
-              />
+                placeholder="ipconfig /all" />
             </div>
           )}
           {actionType === 'run_script' && (
             <div>
               <label className="block text-sm font-medium mb-1.5">脚本路径</label>
-              <input
-                type="text"
-                value={actionValue}
-                onChange={(e) => setActionValue(e.target.value)}
+              <input type="text" value={actionValue} onChange={(e) => setActionValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="C:\Scripts\backup.bat"
-              />
+                placeholder="C:\Scripts\backup.bat" />
             </div>
           )}
           {actionType === 'close_program' && (
             <div>
               <label className="block text-sm font-medium mb-1.5">进程名</label>
-              <input
-                type="text"
-                value={actionValue}
-                onChange={(e) => setActionValue(e.target.value)}
+              <input type="text" value={actionValue} onChange={(e) => setActionValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="notepad.exe"
-              />
+                placeholder="notepad.exe" />
             </div>
           )}
           {actionType === 'send_udp' && (
             <div>
               <label className="block text-sm font-medium mb-1.5">UDP消息 (格式: 主机$端口$消息)</label>
-              <input
-                type="text"
-                value={actionValue}
-                onChange={(e) => setActionValue(e.target.value)}
+              <input type="text" value={actionValue} onChange={(e) => setActionValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="127.0.0.1$8080$Hello"
-              />
+                placeholder="127.0.0.1$8080$Hello" />
             </div>
           )}
           {actionType === 'auto_screenshot' && (
             <div>
               <label className="block text-sm font-medium mb-1.5">保存路径 (可选)</label>
-              <input
-                type="text"
-                value={actionValue}
-                onChange={(e) => setActionValue(e.target.value)}
+              <input type="text" value={actionValue} onChange={(e) => setActionValue(e.target.value)}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="留空则保存到图片目录"
-              />
+                placeholder="留空则保存到图片目录" />
             </div>
           )}
 
-          {/* 定时策略 */}
+          {/* Triggers */}
           <div>
-            <label className="block text-sm font-medium mb-1.5">定时策略</label>
-            <div className="flex flex-wrap gap-2">
-              {SCHEDULE_TYPES.map((st) => (
-                <button
-                  key={st.value}
-                  type="button"
-                  onClick={() => setScheduleType(st.value)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    scheduleType === st.value
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {st.label}
-                </button>
-              ))}
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-sm font-medium">触发器 (定时规则)</label>
+              <button type="button" onClick={() => setShowAddTrigger(!showAddTrigger)}
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80">
+                <Plus className="h-3.5 w-3.5" /> 添加
+              </button>
             </div>
+
+            {/* Existing triggers */}
+            {triggers.length > 0 || pendingTriggers.length > 0 ? (
+              <div className="space-y-2">
+                {triggers.map((tr) => (
+                  <div key={tr.id} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+                    <button type="button" onClick={() => handleToggleTrigger(tr.id!, !tr.enabled)}
+                      className="shrink-0">
+                      {tr.enabled ? <ToggleRight className="h-5 w-5 text-primary" /> : <ToggleLeft className="h-5 w-5 text-muted-foreground" />}
+                    </button>
+                    <span className={`flex-1 text-xs ${tr.enabled ? '' : 'text-muted-foreground line-through'}`}>
+                      {cronToChinese(tr.cron_expression)}
+                    </span>
+                    <button type="button" onClick={() => handleDeleteTrigger(tr.id!)}
+                      className="shrink-0 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {pendingTriggers.map((cron, i) => (
+                  <div key={`pending-${i}`} className="flex items-center gap-2 rounded-lg border border-dashed border-primary/50 px-3 py-2">
+                    <span className="flex-1 text-xs text-primary">{cronToChinese(cron)}</span>
+                    <span className="text-[10px] text-muted-foreground">待保存</span>
+                    <button type="button" onClick={() => setPendingTriggers(pendingTriggers.filter((_, idx) => idx !== i))}
+                      className="shrink-0 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground py-2">暂无触发器，点击"添加"创建</p>
+            )}
+
+            {/* Add trigger form */}
+            {showAddTrigger && (
+              <div className="mt-3 rounded-lg border border-dashed border-primary/50 p-3 space-y-3">
+                <CronHelper value={newCron} onChange={setNewCron} />
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => { setShowAddTrigger(false); setNewCron('') }}>取消</Button>
+                  <Button size="sm" onClick={handleAddTrigger} disabled={!newCron.trim()}>添加</Button>
+                </div>
+              </div>
+            )}
           </div>
-
-          {/* Schedule Config */}
-          {scheduleType === 'once' && (
-            <div>
-              <label className="block text-sm font-medium mb-1.5">日期和时间</label>
-              <input
-                type="datetime-local"
-                value={conf.datetime ?? ''}
-                onChange={(e) => setConf({ ...conf, datetime: e.target.value })}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-          )}
-
-          {scheduleType === 'interval' && (
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-1.5">间隔时间</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={conf.interval ?? ''}
-                  onChange={(e) => setConf({ ...conf, interval: Number(e.target.value) })}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="5"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium mb-1.5">单位</label>
-                <select
-                  value={conf.unit ?? 'minutes'}
-                  onChange={(e) => setConf({ ...conf, unit: e.target.value as ScheduleConf['unit'] })}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {INTERVAL_UNITS.map((u) => (
-                    <option key={u.value} value={u.value}>{u.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {scheduleType === 'daily' && (
-            <div>
-              <label className="block text-sm font-medium mb-1.5">执行时间</label>
-              <input
-                type="time"
-                value={conf.time ?? ''}
-                onChange={(e) => setConf({ ...conf, time: e.target.value })}
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-          )}
-
-          {scheduleType === 'weekly' && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1.5">选择星期</label>
-                <div className="flex gap-2">
-                  {WEEKDAYS.map((day, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => toggleWeekday(idx)}
-                      className={`h-9 w-9 rounded-full text-xs font-medium transition-colors ${
-                        (conf.weekdays ?? []).includes(idx)
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5">执行时间</label>
-                <input
-                  type="time"
-                  value={conf.time ?? ''}
-                  onChange={(e) => setConf({ ...conf, time: e.target.value })}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-            </div>
-          )}
-
-          {scheduleType === 'monthly' && (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1.5">选择日期</label>
-                <div className="grid grid-cols-7 gap-1.5">
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                    <button
-                      key={day}
-                      type="button"
-                      onClick={() => toggleDay(day)}
-                      className={`h-8 w-8 rounded-full text-xs font-medium transition-colors ${
-                        (conf.days ?? []).includes(day)
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground'
-                      }`}
-                    >
-                      {day}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5">执行时间</label>
-                <input
-                  type="time"
-                  value={conf.time ?? ''}
-                  onChange={(e) => setConf({ ...conf, time: e.target.value })}
-                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-border shrink-0">
           <Button variant="outline" onClick={onClose}>取消</Button>
           <Button onClick={handleSave} disabled={saving || !name}>
             {saving ? '保存中...' : '保存'}

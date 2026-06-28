@@ -8,6 +8,7 @@ import DashboardPage from '@/pages/dashboard'
 import TasksPage from '@/pages/tasks'
 import LogsPage from '@/pages/logs'
 import SettingsPage from '@/pages/settings'
+import AboutPage from '@/pages/about'
 import { useGlobalShortcut } from '@/hooks/useGlobalShortcut'
 
 function AnimatedRoutes() {
@@ -21,6 +22,7 @@ function AnimatedRoutes() {
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/about" element={<AboutPage />} />
         </Route>
       </Routes>
     </AnimatePresence>
