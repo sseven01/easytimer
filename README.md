@@ -1,32 +1,109 @@
-# React + TypeScript + Vite
+# EasyTimer
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+一款简洁高效的 Windows 定时任务调度工具，帮助你管理日常任务和提醒。
 
-Currently, two official plugins are available:
+![EasyTimer](https://img.shields.io/badge/version-0.1.0-blue) ![License](https://img.shields.io/badge/license-MIT-green) ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 功能特点
 
-## React Compiler
+- **定时任务调度**：支持 Cron 表达式，灵活设置执行时间
+- **多种动作类型**：打开文件、运行程序、发送通知、执行脚本等
+- **任务管理**：创建、编辑、删除、启用/禁用任务
+- **执行日志**：记录每次任务执行的详细日志
+- **系统托盘**：最小化到托盘，后台静默运行
+- **全局快捷键**：快速唤起应用
+- **开机自启**：系统启动时自动运行
+- **深色/浅色主题**：支持跟随系统或手动切换
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 下载安装
 
-## Expanding the Oxlint configuration
+前往 [Releases](https://github.com/sseven01/easytimer/releases) 页面下载最新版本。
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## 使用教程
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+### 1. 创建任务
+
+1. 点击左侧菜单「任务」
+2. 点击右上角「新建任务」按钮
+3. 填写任务信息：
+   - **任务名称**：为任务取一个易识别的名字
+   - **动作类型**：选择要执行的操作（打开文件、运行程序、通知提醒等）
+   - **动作内容**：根据动作类型填写具体路径或内容
+   - **定时规则**：使用 Cron 表达式设置执行时间
+
+### 2. Cron 表达式
+
+Cron 表达式格式：`秒 分 时 日 月 周`
+
+| 示例 | 说明 |
+|------|------|
+| `0 0 9 * * *` | 每天上午 9:00 |
+| `0 30 18 * * 1-5` | 工作日下午 6:30 |
+| `0 0 */2 * * *` | 每 2 小时执行一次 |
+| `0 0 9 * * 1` | 每周一上午 9:00 |
+
+### 3. 动作类型
+
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| 打开文件 | 打开指定文件或目录 | `C:\Documents\note.txt` |
+| 运行程序 | 执行可执行文件 | `C:\Program Files\App\app.exe` |
+| 通知提醒 | 弹出系统通知 | `该喝水了！` |
+| 打开网址 | 在浏览器中打开链接 | `https://www.qingup.com` |
+| 执行命令 | 运行 CMD/PowerShell 命令 | `ipconfig /all` |
+| 发送按键 | 模拟键盘输入 | `{ENTER}` |
+
+### 4. 管理任务
+
+- **启用/禁用**：点击任务右侧开关
+- **编辑**：点击编辑图标修改任务
+- **删除**：点击删除图标移除任务
+- **查看日志**：在「日志」页面查看执行记录
+
+### 5. 快捷键
+
+- `Ctrl+Shift+T`：快速唤起/隐藏窗口
+
+### 6. 系统托盘
+
+- 关闭窗口时自动最小化到系统托盘
+- 右键托盘图标可快速操作
+- 双击托盘图标恢复窗口
+
+## 设置选项
+
+在「设置」页面可配置：
+
+- **外观主题**：深色 / 浅色 / 跟随系统
+- **开机自启**：系统启动时自动运行
+- **最小化到托盘**：关闭窗口时隐藏到托盘
+- **提醒声音**：任务触发时播放提示音
+- **弹窗动画**：选择提醒弹窗的出现方式
+
+## 技术栈
+
+- **前端**：React 19 + TypeScript + Tailwind CSS
+- **后端**：Rust + Tauri 2
+- **数据库**：SQLite
+- **构建**：Vite + Cargo
+
+## 开发
+
+```bash
+# 安装依赖
+pnpm install
+
+# 开发模式
+pnpm tauri dev
+
+# 构建
+pnpm tauri build
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## 作者
+
+**青城离歌** - [个人网站](https://www.qingup.com) - [GitHub](https://github.com/sseven01)
+
+## 许可证
+
+MIT License
